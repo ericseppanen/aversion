@@ -1,4 +1,4 @@
-trait Versioned {
+pub trait Versioned {
     const VER: u16;
     type Base;
 }
@@ -51,14 +51,17 @@ impl Versioned for MyStructV3 {
     type Base = MyStruct;
 }
 
-pub trait FromVersion<T> {
+pub trait FromVersion<T>: Versioned
+where T: Versioned {
     fn from_version(t: T) -> Self;
 }
 
 // Like std::convert::From, FromVersion should be reflexive.
 // This allows it to be used in generic parameters where any
 // version should be accepted.
-impl<T> FromVersion<T> for T {
+impl<T> FromVersion<T> for T
+where T: Versioned
+{
     fn from_version(t: T) -> Self {
         t
     }
@@ -75,6 +78,7 @@ pub trait IntoVersion<T> {
 // implies `impl Into<T> for T`.
 impl<T, U> IntoVersion<U> for T
 where
+    T: Versioned,
     U: FromVersion<T>,
 {
     fn into_version(self) -> U {
