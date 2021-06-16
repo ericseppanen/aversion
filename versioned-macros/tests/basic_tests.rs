@@ -1,5 +1,4 @@
 use versioned::{FromVersion, IntoVersion, Versioned};
-use versioned_macros::Versioned;
 
 #[test]
 fn basic() {
