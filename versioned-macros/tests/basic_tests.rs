@@ -2,7 +2,7 @@ use versioned::{FromVersion, IntoVersion, Versioned};
 
 #[test]
 fn basic() {
-    pub enum Basic {}
+    pub enum BasicBase {}
 
     #[derive(Versioned)]
     pub struct BasicV1 {

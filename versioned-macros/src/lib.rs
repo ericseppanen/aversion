@@ -25,7 +25,8 @@ pub fn derive_versioned(input: TokenStream) -> TokenStream {
             if base.len() == 0 {
                 panic!("failed to parse struct name");
             }
-            let base = Ident::new(base, struct_name.span());
+            let base_name = format!("{}Base", base);
+            let base = Ident::new(&base_name, struct_name.span());
             let version: u16 = version.parse().expect("failed to parse struct version");
             (base, version)
         }
