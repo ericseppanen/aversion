@@ -2,31 +2,66 @@
 //! For example, a file format or a network protocol may form a group.
 //!
 
-use crate::MessageId;
+use std::any::type_name;
+
+use crate::{MessageId, Versioned};
 use serde::de::DeserializeOwned;
 
-pub trait GroupHelper {
-    type Error;
-    type Header;
+pub trait GroupHeader {
+    fn msg_id(&self) -> u16;
+    fn msg_ver(&self) -> u16;
+}
 
-    fn read_header<T>(&mut self) -> Result<T, Self::Error>;
+/// A trait for deserializing any version of a [`Versioned`] data structure.
+///
+/// This trait will normally be derived by a macro.
+// How will the macro know which versions exist?
+// a) Macro will assume that every version [1..latest] exists
+//    - and maybe there's a macro to generate stubs for missing versions?
+// b) User needs to specify a range or list of versions
+pub trait UpgradeLatest: DeserializeOwned + Versioned {
+    /// Deserialize version `ver` of the target struct, then upgrade it to the latest version.
+    fn upgrade_latest<Src>(src: &mut Src, ver: u16) -> Result<Self, Src::Error>
+    where
+        Src: DataSource;
+}
+
+pub trait DataSource {
+    type Error;
+    type Header: GroupHeader;
+
+    fn read_header(&mut self) -> Result<Self::Header, Self::Error>;
     fn read_message<T>(&mut self) -> Result<T, Self::Error>
     where
         T: DeserializeOwned;
 
-    fn unknown_message(&self, header: Self::Header) -> Self::Error {
-        // Suppress "unused variable" warning; this is just a default
-        // implementation, but _header would show up in the docs.
-        let _ = header;
-        panic!("unknown message");
+    /// An unknown message id was received.
+    fn unknown_message(&self, msg_id: u16) -> Self::Error {
+        panic!("unknown message id {}", msg_id);
+    }
+
+    /// An unknown version of a known message was received.
+    fn unknown_version<T>(&self, ver: u16) -> Self::Error {
+        panic!("unknown version {} for {}", ver, type_name::<T>());
+    }
+
+    /// Expected a specific message type, but got a different message id.
+    fn unexpected_message<T>(&self, msg_id: u16) -> Self::Error {
+        panic!(
+            "unexpected message id {} (expected {})",
+            msg_id,
+            type_name::<T>()
+        );
     }
 }
 
 pub trait GroupDeserialize: Sized {
-    type Source: GroupHelper;
-
-    fn read_message(src: &mut Self::Source) -> Result<Self, <Self::Source as GroupHelper>::Error>;
-    fn expect_message<T>(src: &mut Self::Source) -> Result<T, <Self::Source as GroupHelper>::Error>
+    fn read_message<Src>(src: &mut Src) -> Result<Self, Src::Error>
     where
-        T: MessageId;
+        Src: DataSource;
+
+    fn expect_message<Src, T>(src: &mut Src) -> Result<T, Src::Error>
+    where
+        Src: DataSource,
+        T: MessageId + UpgradeLatest;
 }
