@@ -8,3 +8,8 @@ edition = "2018"
 
 [dependencies]
 versioned-macros = { path="../versioned-macros" }
+serde = { version = "1.0", features = ["derive"] }
+byteorder = "1.4"
+
+[dev-dependencies]
+serde_cbor = "0.11"
