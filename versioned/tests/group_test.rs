@@ -40,10 +40,9 @@ type Foo = FooV1;
 
 enum BarBase {}
 
-#[derive(Versioned)]
+#[derive(Versioned, Serialize, Deserialize)]
 struct BarV1 {
     bar: u64,
-    bar2: bool,
 }
 
 type Bar = BarV1;
@@ -102,10 +101,6 @@ impl GroupHelper for MyStream {
 impl GroupDeserialize for MyGroup1 {
     type Source = MyStream;
 
-    // Assume that the macro has some input like
-    // Deserializer = serde_cbor::from_reader so that
-    // the macro can paste that in.
-
     fn read_message(src: &mut Self::Source) -> Result<Self, <Self::Source as GroupHelper>::Error> {
         let header: <Self::Source as GroupHelper>::Header = src.read_header()?;
         match (header.msg_id, header.msg_ver) {
@@ -113,6 +108,11 @@ impl GroupDeserialize for MyGroup1 {
                 let msg = src.read_message::<FooV1>()?;
                 let upgraded = Foo::from_version(msg);
                 Ok(MyGroup1::Foo(upgraded))
+            }
+            (Bar::MSG_ID, 1) => {
+                let msg = src.read_message::<BarV1>()?;
+                let upgraded = Bar::from_version(msg);
+                Ok(MyGroup1::Bar(upgraded))
             }
             _ => {
                 // Call the user-supplied error fn
