@@ -6,7 +6,7 @@ mod versioned;
 pub use crate::versioned::{FromVersion, IntoVersion, Versioned};
 
 #[doc(inline)]
-pub use versioned_macros::Versioned;
+pub use versioned_macros::{UpgradeLatest, Versioned};
 
 #[doc(inline)]
 pub use id::MessageId;

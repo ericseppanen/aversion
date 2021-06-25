@@ -3,7 +3,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use versioned::group::{DataSource, GroupDeserialize, GroupHeader, UpgradeLatest};
-use versioned::{MessageId, Versioned};
+use versioned::{FromVersion, MessageId, UpgradeLatest, Versioned};
 
 /// A header that can be serialized into a fixed-size buffer.
 #[derive(Debug, Clone)]
@@ -53,22 +53,31 @@ impl GroupHeader for BasicFixedHeader {
     }
 }
 
-enum FooBase {}
-
 #[derive(Debug, PartialEq, Versioned, Serialize, Deserialize)]
 struct FooV1 {
     foo: u32,
 }
 
-type Foo = FooV1;
+#[derive(Debug, PartialEq, Versioned, Serialize, Deserialize, UpgradeLatest)]
+struct FooV2 {
+    foo: u32,
+}
 
-enum BarBase {}
+impl FromVersion<FooV1> for FooV2 {
+    fn from_version(v1: FooV1) -> Self {
+        Self { foo: v1.foo }
+    }
+}
 
-#[derive(Debug, PartialEq, Versioned, Serialize, Deserialize)]
+/// This is the latest version.
+type Foo = FooV2;
+
+#[derive(Debug, PartialEq, Versioned, Serialize, Deserialize, UpgradeLatest)]
 struct BarV1 {
     bar: u64,
 }
 
+/// This is the latest version.
 type Bar = BarV1;
 
 #[derive(Debug, PartialEq)]
@@ -127,37 +136,6 @@ mod derived {
 
     impl MessageId for Bar {
         const MSG_ID: u16 = 0x71;
-    }
-
-    impl UpgradeLatest for Foo {
-        fn upgrade_latest<Src>(src: &mut Src, ver: u16) -> Result<Self, Src::Error>
-        where
-            Src: DataSource,
-        {
-            match ver {
-                1 => {
-                    let msg = src.read_message::<FooV1>()?;
-                    Ok(msg)
-                }
-                _ => Err(src.unknown_version::<Foo>(ver)),
-            }
-        }
-    }
-
-    // This should be derived
-    impl UpgradeLatest for Bar {
-        fn upgrade_latest<Src>(src: &mut Src, ver: u16) -> Result<Self, Src::Error>
-        where
-            Src: DataSource,
-        {
-            match ver {
-                1 => {
-                    let msg = src.read_message::<BarV1>()?;
-                    Ok(msg)
-                }
-                _ => Err(src.unknown_version::<Bar>(ver)),
-            }
-        }
     }
 
     impl GroupDeserialize for MyGroup1 {
