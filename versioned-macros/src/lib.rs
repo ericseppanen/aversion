@@ -111,11 +111,10 @@ pub fn derive_upgrade_latest(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     // Create a list of (version, StructVx), one for each version between 1 and this.
-    let mut all_versions = vec![];
-    for ii in 1..=struct_version {
-        let tup = (ii, versioned_name(&struct_base, ii));
-        all_versions.push(tup);
-    }
+    let all_versions = (1..=struct_version)
+        .into_iter()
+        .map(|ii| (ii, versioned_name(&struct_base, ii)))
+        .collect::<Vec<_>>();
 
     // Generate the match arm tokens for each version.
     let read_message_arms = all_versions
@@ -124,11 +123,10 @@ pub fn derive_upgrade_latest(input: TokenStream) -> TokenStream {
 
     // Generate the FromVersion impls that skip intermediate versions,
     // and jump directly to the latest.
-    let mut all_hops = vec![];
-    for ii in 1..struct_version - 1 {
-        let tokens = quote_from_version_hop(&struct_base, ii, struct_version);
-        all_hops.push(tokens);
-    }
+    let all_hops = (1..struct_version - 1)
+        .into_iter()
+        .map(|ii| quote_from_version_hop(&struct_base, ii, struct_version))
+        .collect::<Vec<_>>();
 
     let expanded = quote! {
         #[doc(hidden)]
@@ -193,17 +191,18 @@ fn quote_from_version_hop(base: &Ident, lo: u16, hi: u16) -> proc_macro2::TokenS
     }
 
     // Create a chain of upgrades.
-    let mut upgrade_chain = vec![];
-    for ii in lo..hi {
-        let jj = ii + 1;
-        let tmp_ii = format_ident!("v{}", ii);
-        let tmp_jj = format_ident!("v{}", jj);
-        let ident_jj = versioned_name(base, jj);
-        let up = quote! {
-            let #tmp_jj = #ident_jj::from_version(#tmp_ii);
-        };
-        upgrade_chain.push(up);
-    }
+    let upgrade_chain = (lo..hi)
+        .into_iter()
+        .map(|ii| {
+            let jj = ii + 1;
+            let tmp_ii = format_ident!("v{}", ii);
+            let tmp_jj = format_ident!("v{}", jj);
+            let ident_jj = versioned_name(base, jj);
+            quote! {
+                let #tmp_jj = #ident_jj::from_version(#tmp_ii);
+            }
+        })
+        .collect::<Vec<_>>();
 
     let lo_ident = versioned_name(base, lo);
     let hi_ident = versioned_name(base, hi);
