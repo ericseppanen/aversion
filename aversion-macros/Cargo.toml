@@ -17,4 +17,4 @@ syn = {version = "1.0", features = ["extra-traits"]}
 proc-macro2 = "1.0"
 
 [dev-dependencies]
-aversion = { version="0.1", path = "../aversion" }
+aversion = { path = "../aversion", version="0.1" }
