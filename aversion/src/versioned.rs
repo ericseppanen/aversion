@@ -1,8 +1,21 @@
+/// A data structure that has a version number.
+///
+/// A `Versioned` data structure is part of a family of data structures,
+/// with the expectation that each new version can be deterministically
+/// created from the older version using the [`FromVersion`] or
+/// [`IntoVersion`] traits.
+///
 pub trait Versioned {
     const VER: u16;
     type Base: Versioned;
 }
 
+/// Convert an older message version to a newer message version.
+///
+/// Like the standard library's `From` and `Into` traits, users should
+/// implement `FromVersion`, and the corresponding [`IntoVersion`]
+/// implementation is provided by a blanket implementation.
+///
 pub trait FromVersion<T>: Versioned
 where
     T: Versioned,
@@ -22,6 +35,9 @@ where
     }
 }
 
+/// Convert an older message version to a newer message version.
+///
+/// This is the inverse of [`FromVersion`]; see its documentation for more.
 pub trait IntoVersion<T> {
     fn into_version(self) -> T;
 }

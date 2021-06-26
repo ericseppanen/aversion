@@ -1,3 +1,5 @@
+//! Define message groups for automatic dispatching.
+//!
 //! A message group is a collection of messages that may be used together.
 //! For example, a file format or a network protocol may form a group.
 //!
@@ -6,6 +8,8 @@ use std::any::type_name;
 
 use crate::{MessageId, Versioned};
 use serde::de::DeserializeOwned;
+
+/// A data structure that contains a message-id and version fields.
 
 pub trait GroupHeader {
     fn msg_id(&self) -> u16;
@@ -26,6 +30,9 @@ pub trait UpgradeLatest: DeserializeOwned + Versioned {
         Src: DataSource;
 }
 
+/// `DataSource` allows user-defined IO, deserialization, and
+/// error handling.
+///
 pub trait DataSource {
     type Error;
     type Header: GroupHeader;
@@ -55,6 +62,7 @@ pub trait DataSource {
     }
 }
 
+/// A derived trait that can deserialize any message from a group.
 pub trait GroupDeserialize: Sized {
     fn read_message<Src>(src: &mut Src) -> Result<Self, Src::Error>
     where

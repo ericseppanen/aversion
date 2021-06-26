@@ -1,0 +1,19 @@
+[package]
+name = "aversion"
+description = "Versioned data structures with auto-upgrading"
+keywords = ["versions", "versioned"]
+categories = ["data-structures", "encoding"]
+repository = "https://github.com/ericseppanen/aversion"
+license = "Apache-2.0"
+version = "0.1.0"
+authors = ["Eric Seppanen <eds@reric.net>"]
+readme = "README.md"
+edition = "2018"
+
+[dependencies]
+aversion-macros = { version="0.1", path="../aversion-macros" }
+serde = { version = "1.0", features = ["derive"] }
+byteorder = "1.4"
+
+[dev-dependencies]
+serde_cbor = "0.11"

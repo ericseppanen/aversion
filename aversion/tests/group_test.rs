@@ -1,9 +1,9 @@
+use aversion::group::{DataSource, GroupDeserialize, GroupHeader, UpgradeLatest};
+use aversion::{FromVersion, MessageId, UpgradeLatest, Versioned};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
-use versioned::group::{DataSource, GroupDeserialize, GroupHeader, UpgradeLatest};
-use versioned::{FromVersion, MessageId, UpgradeLatest, Versioned};
 
 /// A header that can be serialized into a fixed-size buffer.
 #[derive(Debug, Clone)]
@@ -155,7 +155,7 @@ mod derived {
         where
             Src: DataSource,
         {
-            let header: Src::Header = src.read_header()?;
+            let header = src.read_header()?;
             match header.msg_id() {
                 Foo::MSG_ID => {
                     let msg = Foo::upgrade_latest(src, header.msg_ver())?;

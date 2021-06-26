@@ -1,4 +1,4 @@
-//! ## versioned-macros: macro for deriving the `Versioned` trait.
+//! ## aversion-macros: macros for deriving the `Versioned` trait.
 //!
 
 extern crate proc_macro;
@@ -73,10 +73,10 @@ pub fn derive_versioned(input: TokenStream) -> TokenStream {
         )]
         const _: () = {
             #[allow(rust_2018_idioms, clippy::useless_attribute)]
-            extern crate versioned as _versioned;
+            extern crate aversion as _aversion;
 
             #[automatically_derived]
-            impl #impl_generics _versioned::Versioned
+            impl #impl_generics _aversion::Versioned
             for #struct_name #ty_generics #where_clause {
                 const VER: u16 = #struct_version;
                 type Base = #struct_base;
@@ -139,15 +139,15 @@ pub fn derive_upgrade_latest(input: TokenStream) -> TokenStream {
         )]
         const _: () = {
             #[allow(rust_2018_idioms, clippy::useless_attribute)]
-            extern crate versioned as _versioned;
+            extern crate aversion as _aversion;
 
             #[automatically_derived]
-            impl #impl_generics _versioned::group::UpgradeLatest
+            impl #impl_generics _aversion::group::UpgradeLatest
             for #struct_name #ty_generics #where_clause {
 
                 fn upgrade_latest<Src>(src: &mut Src, ver: u16) -> Result<Self, Src::Error>
                 where
-                    Src: _versioned::group::DataSource,
+                    Src: _aversion::group::DataSource,
                 {
                     match ver {
                         #(#read_message_arms)*
@@ -172,7 +172,7 @@ fn quote_read_message_arm(
     quote! {
         #version => {
             let msg = src.read_message::<#versioned_name>()?;
-            let upgraded = <#target_name as _versioned::FromVersion::<#versioned_name>>::from_version(msg);
+            let upgraded = <#target_name as _aversion::FromVersion::<#versioned_name>>::from_version(msg);
             Ok(upgraded)
         }
     }

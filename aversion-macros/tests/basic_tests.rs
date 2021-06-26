@@ -1,4 +1,4 @@
-use versioned::{FromVersion, IntoVersion, Versioned};
+use aversion::{FromVersion, IntoVersion, Versioned};
 
 #[test]
 fn basic() {
