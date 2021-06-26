@@ -159,20 +159,6 @@ mod derived {
                 }
             }
         }
-
-        fn expect_message<Src, T>(src: &mut Src) -> Result<T, Src::Error>
-        where
-            Src: DataSource,
-            T: MessageId + UpgradeLatest,
-        {
-            let header: Src::Header = src.read_header()?;
-            if header.msg_id() == T::MSG_ID {
-                T::upgrade_latest(src, header.msg_ver())
-            } else {
-                // Call the user-supplied error fn
-                Err(src.unexpected_message::<T>(header.msg_id()))
-            }
-        }
     }
 }
 
@@ -187,13 +173,28 @@ fn test_group() {
     header.serialize_into(&mut cursor).unwrap();
     serde_cbor::to_writer(&mut cursor, &my_foo).unwrap();
 
-    // Reset the cursor so we can do some reading.
-    cursor.seek(SeekFrom::Start(0)).unwrap();
+    {
+        let mut cursor = cursor.clone();
+        // Reset the cursor so we will read from the beginning.
+        cursor.seek(SeekFrom::Start(0)).unwrap();
 
-    let mut my_stream = MyStream {
-        reader: Box::new(cursor),
-    };
+        let mut my_stream = MyStream {
+            reader: Box::new(cursor),
+        };
 
-    let message = MyGroup1::read_message(&mut my_stream).unwrap();
-    assert_eq!(message, MyGroup1::Foo(Foo { foo: 1234 }));
+        let message = MyGroup1::read_message(&mut my_stream).unwrap();
+        assert_eq!(message, MyGroup1::Foo(Foo { foo: 1234 }));
+    }
+    {
+        let mut cursor = cursor.clone();
+        // Reset the cursor so we will read from the beginning.
+        cursor.seek(SeekFrom::Start(0)).unwrap();
+
+        let mut my_stream = MyStream {
+            reader: Box::new(cursor),
+        };
+
+        let message: Foo = MyGroup1::expect_message(&mut my_stream).unwrap();
+        assert_eq!(message, Foo { foo: 1234 });
+    }
 }

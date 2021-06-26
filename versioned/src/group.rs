@@ -63,5 +63,14 @@ pub trait GroupDeserialize: Sized {
     fn expect_message<Src, T>(src: &mut Src) -> Result<T, Src::Error>
     where
         Src: DataSource,
-        T: MessageId + UpgradeLatest;
+        T: MessageId + UpgradeLatest,
+    {
+        let header: Src::Header = src.read_header()?;
+        if header.msg_id() == T::MSG_ID {
+            T::upgrade_latest(src, header.msg_ver())
+        } else {
+            // Call the user-supplied error fn
+            Err(src.unexpected_message::<T>(header.msg_id()))
+        }
+    }
 }
