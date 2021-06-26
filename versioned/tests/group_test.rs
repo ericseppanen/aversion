@@ -59,7 +59,7 @@ struct FooV1 {
     foo: u32,
 }
 
-#[derive(Debug, PartialEq, Versioned, Serialize, Deserialize, UpgradeLatest)]
+#[derive(Debug, PartialEq, Versioned, Serialize, Deserialize)]
 struct FooV2 {
     foo2: u32,
 }
@@ -70,8 +70,19 @@ impl FromVersion<FooV1> for FooV2 {
     }
 }
 
+#[derive(Debug, PartialEq, Versioned, Serialize, Deserialize, UpgradeLatest)]
+struct FooV3 {
+    foo3: u32,
+}
+
+impl FromVersion<FooV2> for FooV3 {
+    fn from_version(v2: FooV2) -> Self {
+        Self { foo3: v2.foo2 + 10 }
+    }
+}
+
 /// This is the latest version.
-type Foo = FooV2;
+type Foo = FooV3;
 
 #[derive(Debug, PartialEq, Versioned, Serialize, Deserialize, UpgradeLatest)]
 struct BarV1 {
@@ -184,7 +195,7 @@ fn test_group() {
         };
 
         let message = MyGroup1::read_message(&mut my_stream).unwrap();
-        assert_eq!(message, MyGroup1::Foo(Foo { foo2: 1235 }));
+        assert_eq!(message, MyGroup1::Foo(Foo { foo3: 1245 }));
     }
     {
         let mut cursor = cursor.clone();
@@ -196,6 +207,6 @@ fn test_group() {
         };
 
         let message: Foo = MyGroup1::expect_message(&mut my_stream).unwrap();
-        assert_eq!(message, Foo { foo2: 1235 });
+        assert_eq!(message, Foo { foo3: 1245 });
     }
 }

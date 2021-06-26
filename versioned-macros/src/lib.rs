@@ -5,7 +5,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
 /// Information extracted from the name of a struct.
@@ -122,6 +122,14 @@ pub fn derive_upgrade_latest(input: TokenStream) -> TokenStream {
         .iter()
         .map(|(v, n)| quote_read_message_arm(*v, n, &struct_name));
 
+    // Generate the FromVersion impls that skip intermediate versions,
+    // and jump directly to the latest.
+    let mut all_hops = vec![];
+    for ii in 1..struct_version - 1 {
+        let tokens = quote_from_version_hop(&struct_base, ii, struct_version);
+        all_hops.push(tokens);
+    }
+
     let expanded = quote! {
         #[doc(hidden)]
         #[allow(
@@ -149,9 +157,9 @@ pub fn derive_upgrade_latest(input: TokenStream) -> TokenStream {
                         _ => Err(src.unknown_version::<#struct_base>(ver)),
                     }
                 }
-
-
             }
+
+            #(#all_hops)*
         };
     };
     // proc_macro2::TokenStream -> proc_macro::TokenStream
@@ -168,6 +176,46 @@ fn quote_read_message_arm(
             let msg = src.read_message::<#versioned_name>()?;
             let upgraded = <#target_name as _versioned::FromVersion::<#versioned_name>>::from_version(msg);
             Ok(upgraded)
+        }
+    }
+}
+
+/// Chain FromVersion implementations to skip directly to the latest version.
+///
+/// If there is a FooV1..FooV4, and there is a FromVersion for each N to N+1,
+/// generate the code for `FromVersion<FooV1> for FooV4`.
+///
+fn quote_from_version_hop(base: &Ident, lo: u16, hi: u16) -> proc_macro2::TokenStream {
+    assert!(hi > lo);
+    if hi - lo < 2 {
+        // The user should already have provided FromVersion<___N> for ___M
+        return quote! {};
+    }
+
+    // Create a chain of upgrades.
+    let mut upgrade_chain = vec![];
+    for ii in lo..hi {
+        let jj = ii + 1;
+        let tmp_ii = format_ident!("v{}", ii);
+        let tmp_jj = format_ident!("v{}", jj);
+        let ident_jj = versioned_name(base, jj);
+        let up = quote! {
+            let #tmp_jj = #ident_jj::from_version(#tmp_ii);
+        };
+        upgrade_chain.push(up);
+    }
+
+    let lo_ident = versioned_name(base, lo);
+    let hi_ident = versioned_name(base, hi);
+    let lo_tmp = format_ident!("v{}", lo);
+    let hi_tmp = format_ident!("v{}", hi);
+
+    quote! {
+        impl FromVersion<#lo_ident> for #hi_ident {
+            fn from_version(#lo_tmp: #lo_ident) -> Self {
+                #(#upgrade_chain)*
+                #hi_tmp
+            }
         }
     }
 }
