@@ -190,13 +190,18 @@ fn quote_from_version_hop(base: &Ident, lo: u16, hi: u16) -> proc_macro2::TokenS
         return quote! {};
     }
 
+    // Create identifiers like `v1`, `v2`, etc.
+    fn tmp_ident(x: u16) -> Ident {
+        format_ident!("v{}", x)
+    }
+
     // Create a chain of upgrades.
     let upgrade_chain = (lo..hi)
         .into_iter()
         .map(|ii| {
             let jj = ii + 1;
-            let tmp_ii = format_ident!("v{}", ii);
-            let tmp_jj = format_ident!("v{}", jj);
+            let tmp_ii = tmp_ident(ii);
+            let tmp_jj = tmp_ident(jj);
             let ident_jj = versioned_name(base, jj);
             quote! {
                 let #tmp_jj = #ident_jj::from_version(#tmp_ii);
@@ -206,8 +211,8 @@ fn quote_from_version_hop(base: &Ident, lo: u16, hi: u16) -> proc_macro2::TokenS
 
     let lo_ident = versioned_name(base, lo);
     let hi_ident = versioned_name(base, hi);
-    let lo_tmp = format_ident!("v{}", lo);
-    let hi_tmp = format_ident!("v{}", hi);
+    let lo_tmp = tmp_ident(lo);
+    let hi_tmp = tmp_ident(hi);
 
     quote! {
         impl FromVersion<#lo_ident> for #hi_ident {
