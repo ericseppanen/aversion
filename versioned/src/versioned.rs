@@ -1,6 +1,6 @@
 pub trait Versioned {
     const VER: u16;
-    type Base;
+    type Base: Versioned;
 }
 
 pub trait FromVersion<T>: Versioned
@@ -45,10 +45,6 @@ where
 mod tests {
     use super::*;
 
-    // This is a placeholder, that we will use to organize the different versions.
-    // Because this is a zero-variant enum, it can't actually be instantiated.
-    enum MyStruct {}
-
     #[derive(Debug, Clone)]
     struct MyStructV1 {
         x: u64,
@@ -77,6 +73,8 @@ mod tests {
         x: u64,
         y: u64,
     }
+
+    type MyStruct = MyStructV3;
 
     impl Versioned for MyStructV3 {
         const VER: u16 = 3;

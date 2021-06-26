@@ -15,10 +15,11 @@ pub struct BasicFixedHeader {
 impl BasicFixedHeader {
     pub fn for_msg<T>(_msg: &T) -> Self
     where
-        T: Versioned + MessageId,
+        T: Versioned,
+        T::Base: MessageId,
     {
         BasicFixedHeader {
-            msg_id: T::MSG_ID,
+            msg_id: T::Base::MSG_ID,
             msg_ver: T::VER,
         }
     }
@@ -60,12 +61,12 @@ struct FooV1 {
 
 #[derive(Debug, PartialEq, Versioned, Serialize, Deserialize, UpgradeLatest)]
 struct FooV2 {
-    foo: u32,
+    foo2: u32,
 }
 
 impl FromVersion<FooV1> for FooV2 {
     fn from_version(v1: FooV1) -> Self {
-        Self { foo: v1.foo }
+        Self { foo2: v1.foo + 1 }
     }
 }
 
@@ -166,7 +167,7 @@ mod derived {
 fn test_group() {
     let mut cursor = Cursor::new(Vec::<u8>::new());
 
-    let my_foo = Foo { foo: 1234 };
+    let my_foo = FooV1 { foo: 1234 };
     let header = BasicFixedHeader::for_msg(&my_foo);
 
     // FIXME: add a DataSink trait for writing
@@ -183,7 +184,7 @@ fn test_group() {
         };
 
         let message = MyGroup1::read_message(&mut my_stream).unwrap();
-        assert_eq!(message, MyGroup1::Foo(Foo { foo: 1234 }));
+        assert_eq!(message, MyGroup1::Foo(Foo { foo2: 1235 }));
     }
     {
         let mut cursor = cursor.clone();
@@ -195,6 +196,6 @@ fn test_group() {
         };
 
         let message: Foo = MyGroup1::expect_message(&mut my_stream).unwrap();
-        assert_eq!(message, Foo { foo: 1234 });
+        assert_eq!(message, Foo { foo2: 1235 });
     }
 }
