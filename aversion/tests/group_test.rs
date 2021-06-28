@@ -1,5 +1,5 @@
-use aversion::group::{DataSource, GroupDeserialize, GroupHeader, UpgradeLatest};
-use aversion::{FromVersion, MessageId, UpgradeLatest, Versioned};
+use aversion::group::{DataSource, GroupHeader, UpgradeLatest};
+use aversion::{FromVersion, GroupDeserialize, MessageId, UpgradeLatest, Versioned};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -129,7 +129,7 @@ impl DataSource for MyStream {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, GroupDeserialize)]
 enum MyGroup1 {
     Foo(Foo),
     Bar(Bar),
@@ -148,29 +148,6 @@ mod derived {
 
     impl MessageId for Bar {
         const MSG_ID: u16 = 0x71;
-    }
-
-    impl GroupDeserialize for MyGroup1 {
-        fn read_message<Src>(src: &mut Src) -> Result<Self, Src::Error>
-        where
-            Src: DataSource,
-        {
-            let header = src.read_header()?;
-            match header.msg_id() {
-                Foo::MSG_ID => {
-                    let msg = Foo::upgrade_latest(src, header.msg_ver())?;
-                    Ok(MyGroup1::Foo(msg))
-                }
-                Bar::MSG_ID => {
-                    let msg = Bar::upgrade_latest(src, header.msg_ver())?;
-                    Ok(MyGroup1::Bar(msg))
-                }
-                _ => {
-                    // Call the user-supplied error fn
-                    Err(src.unknown_message(header.msg_id()))
-                }
-            }
-        }
     }
 }
 

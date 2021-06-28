@@ -6,7 +6,7 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput};
+use syn::{parse_macro_input, DeriveInput, Path, Variant};
 
 /// Information extracted from the name of a struct.
 struct NameInfo {
@@ -219,6 +219,117 @@ fn quote_from_version_hop(base: &Ident, lo: u16, hi: u16) -> proc_macro2::TokenS
             fn from_version(#lo_tmp: #lo_ident) -> Self {
                 #(#upgrade_chain)*
                 #hi_tmp
+            }
+        }
+    }
+}
+
+/// Derive the `GroupDeserialize` trait on a struct.
+///
+/// This macro expects an enum as input, where each variant contains exactly
+/// one field: a type that implements `Versioned + MessageId`.
+///
+#[proc_macro_derive(GroupDeserialize)]
+pub fn derive_group_deserialize(input: TokenStream) -> TokenStream {
+    // parse the input into a DeriveInput syntax tree
+    let input = parse_macro_input!(input as DeriveInput);
+    let enum_name = &input.ident;
+
+    // The original generic parameters from the input struct
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    let source_struct = input.data;
+    let variants = if let syn::Data::Enum(syn::DataEnum { variants, .. }) = source_struct {
+        variants
+    } else {
+        panic!("couldn't find enum variants");
+    };
+
+    let match_arms = variants
+        .iter()
+        .map(|v| {
+            // Extract basic data about this variant
+            let gv = GroupVariant::from_enum_variant(v);
+            // Write the GroupDeserialize match arm for this variant
+            gv.to_match_arm(enum_name)
+        })
+        .collect::<Vec<_>>();
+
+    let expanded = quote! {
+        #[doc(hidden)]
+        #[allow(
+            non_upper_case_globals,
+            unused_attributes,
+            unused_qualifications,
+            non_camel_case_types,
+            non_snake_case
+        )]
+        const _: () = {
+            #[allow(rust_2018_idioms, clippy::useless_attribute)]
+            extern crate aversion as _aversion;
+
+            #[automatically_derived]
+            impl #impl_generics _aversion::GroupDeserialize
+            for #enum_name #ty_generics #where_clause {
+                fn read_message<Src>(src: &mut Src) -> Result<Self, Src::Error>
+                where
+                    Src: DataSource,
+                {
+                    let header = src.read_header()?;
+                    match header.msg_id() {
+                        #(#match_arms)*
+                        _ => {
+                            Err(src.unknown_message(header.msg_id()))
+                        }
+                    }
+                }
+            }
+        };
+    };
+
+    // proc_macro2::TokenStream -> proc_macro::TokenStream
+    expanded.into()
+}
+
+#[derive(Debug)]
+struct GroupVariant {
+    name: Ident,
+    target: Path,
+}
+
+impl GroupVariant {
+    fn from_enum_variant(variant: &Variant) -> GroupVariant {
+        let name = variant.ident.clone();
+        let mut target_path: Option<Path> = None;
+        if let syn::Fields::Unnamed(syn::FieldsUnnamed {
+            unnamed: variant_fields,
+            ..
+        }) = &variant.fields
+        {
+            if variant_fields.len() != 1 {
+                panic!("enum must contain exactly 1 field");
+            }
+            let field = variant_fields.first().unwrap();
+
+            if let syn::Type::Path(syn::TypePath { path, .. }) = &field.ty {
+                target_path = Some(path.clone());
+            }
+        }
+
+        let target = target_path
+            .unwrap_or_else(|| panic!("failed to extract enum target path for {}", name));
+
+        GroupVariant { name, target }
+    }
+
+    fn to_match_arm(&self, enum_name: &Ident) -> proc_macro2::TokenStream {
+        let enum_variant = &self.name;
+        let struct_name = &self.target;
+
+        quote! {
+            #struct_name::MSG_ID => {
+                let msg = #struct_name::upgrade_latest(src, header.msg_ver())?;
+                Ok(#enum_name::#enum_variant(msg))
             }
         }
     }

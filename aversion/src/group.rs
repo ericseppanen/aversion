@@ -4,10 +4,9 @@
 //! For example, a file format or a network protocol may form a group.
 //!
 
-use std::any::type_name;
-
 use crate::{MessageId, Versioned};
 use serde::de::DeserializeOwned;
+use std::any::type_name;
 
 /// A data structure that contains a message-id and version fields.
 

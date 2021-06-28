@@ -94,7 +94,10 @@ mod versioned;
 pub use crate::versioned::{FromVersion, IntoVersion, Versioned};
 
 #[doc(inline)]
-pub use aversion_macros::{UpgradeLatest, Versioned};
+pub use crate::group::GroupDeserialize;
+
+#[doc(inline)]
+pub use aversion_macros::{GroupDeserialize, UpgradeLatest, Versioned};
 
 #[doc(inline)]
 pub use id::MessageId;
