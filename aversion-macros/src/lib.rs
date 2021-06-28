@@ -23,7 +23,7 @@ impl NameInfo {
         // Split the struct into base and version fields
         let (struct_base, struct_version) = match struct_name_string.rsplit_once('V') {
             Some((base, version)) => {
-                if base.len() == 0 {
+                if base.is_empty() {
                     panic!("failed to parse struct name");
                 }
                 let base = Ident::new(&base, ident.span());
