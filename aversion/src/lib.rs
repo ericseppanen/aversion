@@ -4,14 +4,14 @@
 //!
 //! The goal of this crate is to make versioned data structures easy. For example,
 //! imagine we start out with this struct:
-//! ```ignore
+//! ```
 //! struct FooV1 {
 //!     val: u32,
 //! }
 //! ```
 //! If we serialize data to files in this format, but later discover that we want
 //! to make a change:
-//! ```ignore
+//! ```
 //! struct FooV2 {
 //!     val: u64,
 //! }
@@ -35,7 +35,14 @@
 //!   version.
 //! - For each pair of versions, `N` and `N+1`, the trait `FromVersion` must be
 //!   implemented. For example:
-//! ```ignore
+//! ```
+//! # use aversion::{FromVersion, Versioned};
+//! # #[derive(Versioned)]
+//! # struct FooV1 { val: u32 }
+//! # #[derive(Versioned)]
+//! # struct FooV2 { val: u64 }
+//! # type Foo = FooV2;
+//! #
 //! impl FromVersion<FooV1> for FooV2 {
 //!     fn from_version(v1: FooV1) -> Self {
 //!         FooV2 { val: v1.val.into() }
@@ -52,7 +59,7 @@
 //!
 //! Once the `UpgradeLatest` trait is implemented (there is a derive macro for
 //! this), we can quickly deserialize any version of our data structure, e.g.
-//! ```ignore
+//! ```text
 //! // Define a data source (IO interface, serialization, etc.)
 //! let src = MyDataSource::new(...);
 //! // Read a header struct that contains the message id and struct version
@@ -69,7 +76,9 @@
 //!
 //! We can extend this logic to groups of different messages, to automatically
 //! build a dispatch function. For example, if we define a collection of messages:
-//! ```ignore
+//! ```
+//! # struct Foo;
+//! # struct Bar;
 //! enum MyMessageGroup {
 //!     Foo(Foo),
 //!     Bar(Bar),
