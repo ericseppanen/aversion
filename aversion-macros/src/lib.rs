@@ -1,4 +1,4 @@
-//! ## aversion-macros: macros for deriving the `Versioned` trait.
+//! ## aversion-macros: macros for deriving traits in the `aversion` crate.
 //!
 
 extern crate proc_macro;
@@ -6,7 +6,8 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput, Path, Variant};
+use syn::parse::{Parse, ParseStream};
+use syn::{parse_macro_input, punctuated::Punctuated, DeriveInput, LitInt, Path, Token, Variant};
 
 /// Information extracted from the name of a struct.
 struct NameInfo {
@@ -330,6 +331,104 @@ impl GroupVariant {
             #struct_name::MSG_ID => {
                 let msg = #struct_name::upgrade_latest(src, header.msg_ver())?;
                 Ok(#enum_name::#enum_variant(msg))
+            }
+        }
+    }
+}
+
+// The documentation for this macro is in aversion/src/lib.rs,
+// so that links to other aversion types will work (they're not
+// in scope here).
+//
+// Just as a reminder, the syntax is:
+//  assign_message_ids! {
+//      Foo: 100,
+//      Bar: 101,
+//      Baz: 109,
+//  }
+//
+#[proc_macro]
+pub fn assign_message_ids(tokens: TokenStream) -> TokenStream {
+    let id_list = parse_macro_input!(tokens as MessageIdList);
+    let id_impls = id_list.to_impl();
+    let expanded = quote! {
+        #[doc(hidden)]
+        #[allow(
+            non_upper_case_globals,
+            unused_attributes,
+            unused_qualifications,
+            non_camel_case_types,
+            non_snake_case
+        )]
+        const _: () = {
+            #[allow(rust_2018_idioms, clippy::useless_attribute)]
+            extern crate aversion as _aversion;
+
+            #id_impls
+        };
+    };
+    expanded.into()
+}
+
+#[derive(Debug, Default)]
+struct MessageIdList {
+    list: Vec<MessageIdValue>,
+}
+
+#[derive(Debug)]
+struct MessageIdValue {
+    name: Path,
+    // FIXME: validate this fits in u16.
+    msg_id: LitInt,
+}
+
+/// Parse a single message-id value, e.g. `Foo: 123`
+///
+/// This is used by `assign_message_ids`.
+impl Parse for MessageIdValue {
+    fn parse(input: ParseStream) -> syn::parse::Result<Self> {
+        let name: Path = input.parse()?;
+        input.parse::<Token![:]>()?;
+        let msg_id: LitInt = input.parse()?;
+        Ok(MessageIdValue { name, msg_id })
+    }
+}
+
+/// Parse a comma-separated sequence of `MessageIdValue`.
+///
+/// This is used by `assign_message_ids`.
+impl Parse for MessageIdList {
+    fn parse(input: ParseStream) -> syn::parse::Result<Self> {
+        type IdList = Punctuated<MessageIdValue, Token![,]>;
+
+        let id_list = IdList::parse_separated_nonempty(input)?;
+
+        Ok(MessageIdList {
+            list: id_list.into_iter().collect(),
+        })
+    }
+}
+
+/// Convert a `MessageIdList` to a sequence of `MessageId` impls.
+impl MessageIdList {
+    fn to_impl(&self) -> proc_macro2::TokenStream {
+        let mut tokens = proc_macro2::TokenStream::new();
+        for id_val in &self.list {
+            tokens.extend(id_val.to_impl())
+        }
+        tokens
+    }
+}
+
+/// Convert a single MessageIdValue to a MessageId impl.
+impl MessageIdValue {
+    fn to_impl(&self) -> proc_macro2::TokenStream {
+        let name = &self.name;
+        let msg_id = &self.msg_id;
+        quote! {
+            #[automatically_derived]
+            impl _aversion::MessageId for #name {
+                const MSG_ID: u16 = #msg_id;
             }
         }
     }

@@ -79,20 +79,29 @@
 //! ```
 //! # struct Foo;
 //! # struct Bar;
-//! enum MyMessageGroup {
+//! enum MyProtocol {
 //!     Foo(Foo),
 //!     Bar(Bar),
 //! }
 //! ```
 //!
-//! Then with a little more logic, we will be able to derive the function:
+//! We can derive the trait `GroupDeserialize` that can automatically deserialize
+//! any of the messages in `MyProtocol`:
 //! ```ignore
-//! fn read_message(src: &mut MyDataSource) -> Result<MyMessageGroup, _>
+//! let incoming_message: MyProtocol = read_message(my_data_source)?;
+//! match incoming_message {
+//!     Foo(f) => {
+//!         // handle the received Foo message
+//!     }
+//!     Bar(b) => {
+//!         // handle the received Bar message
+//!     }
+//! }
 //! ```
 //! Similar to the previous example, the header field will tell us which message
 //! was sent (i.e. `Foo` or `Bar`), along with the version of that struct (`FooV1`
 //! or `FooV2`) and `read_message` deserializes the correct version of the struct,
-//! upgrades it to the latest version, and inserts it into the `MyMessageGroup`
+//! upgrades it to the latest version, and returns it as a `MyProtocol`
 //! enum, for the caller to handle.
 
 pub mod group;
@@ -107,6 +116,43 @@ pub use crate::group::GroupDeserialize;
 
 #[doc(inline)]
 pub use aversion_macros::{GroupDeserialize, UpgradeLatest, Versioned};
+
+/// Implement `MessageId` for a bunch of types at once.
+///
+/// The `assign_message_ids!` macro uses the following syntax:
+/// ```text
+/// assign_message_ids! {
+///     Foo: 100,
+///     Bar: 101,
+///     Baz: 109,
+/// }
+/// ```
+/// This is equivalent to writing the following [`MessageId`] implementations by hand:
+/// ```
+/// # use aversion::{MessageId, Versioned};
+/// # #[derive(Versioned)]
+/// # struct FooV1;
+/// # type Foo = FooV1;
+/// # #[derive(Versioned)]
+/// # struct BarV1;
+/// # type Bar = BarV1;
+/// # #[derive(Versioned)]
+/// # struct BazV1;
+/// # type Baz = BazV1;
+///
+/// impl MessageId for Foo {
+///    const MSG_ID: u16 = 100;
+/// }
+/// impl MessageId for Bar {
+///    const MSG_ID: u16 = 101;
+/// }
+/// impl MessageId for Baz {
+///    const MSG_ID: u16 = 109;
+/// }
+/// ```
+///
+#[doc(inline)]
+pub use aversion_macros::assign_message_ids;
 
 #[doc(inline)]
 pub use id::MessageId;
