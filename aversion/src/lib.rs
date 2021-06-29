@@ -42,7 +42,7 @@
 //! # #[derive(Versioned)]
 //! # struct FooV2 { val: u64 }
 //! # type Foo = FooV2;
-//! #
+//!
 //! impl FromVersion<FooV1> for FooV2 {
 //!     fn from_version(v1: FooV1) -> Self {
 //!         FooV2 { val: v1.val.into() }
