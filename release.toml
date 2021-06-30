@@ -1,3 +1,4 @@
 no-dev-version = true
 pre-release-commit-message = "release {{version}}"
 tag-name = "v{{version}}"
+disable-tag = true
