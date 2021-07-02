@@ -91,6 +91,18 @@ where
         let msg: T = serde_cbor::from_reader(&mut subreader)?;
         Ok(msg)
     }
+
+    fn unknown_message(&self, _msg_id: u16) -> CborDataError {
+        CborDataError::Serializer
+    }
+
+    fn unknown_version<T>(&self, _ver: u16) -> CborDataError {
+        CborDataError::Serializer
+    }
+
+    fn unexpected_message<T>(&self, _msg_id: u16) -> CborDataError {
+        CborDataError::Serializer
+    }
 }
 
 impl<W> DataSink for CborData<W>
