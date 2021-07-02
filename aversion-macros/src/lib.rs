@@ -146,7 +146,7 @@ pub fn derive_upgrade_latest(input: TokenStream) -> TokenStream {
             impl #impl_generics _aversion::group::UpgradeLatest
             for #struct_name #ty_generics #where_clause {
 
-                fn upgrade_latest<Src>(src: &mut Src, ver: u16) -> Result<Self, Src::Error>
+                fn upgrade_latest<Src>(src: &mut Src, ver: u16) -> ::std::result::Result<Self, Src::Error>
                 where
                     Src: _aversion::group::DataSource,
                 {
@@ -272,9 +272,9 @@ pub fn derive_group_deserialize(input: TokenStream) -> TokenStream {
             #[automatically_derived]
             impl #impl_generics _aversion::GroupDeserialize
             for #enum_name #ty_generics #where_clause {
-                fn read_message<Src>(src: &mut Src) -> Result<Self, Src::Error>
+                fn read_message<Src>(src: &mut Src) -> ::std::result::Result<Self, Src::Error>
                 where
-                    Src: DataSource,
+                    Src: _aversion::group::DataSource,
                 {
                     let header = src.read_header()?;
                     match header.msg_id() {

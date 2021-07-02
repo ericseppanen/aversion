@@ -1,4 +1,4 @@
-use aversion::group::{DataSink, DataSource, GroupHeader, UpgradeLatest};
+use aversion::group::{DataSink, GroupHeader, UpgradeLatest};
 use aversion::util::cbor::CborData;
 use aversion::{
     assign_message_ids, FromVersion, GroupDeserialize, MessageId, UpgradeLatest, Versioned,
