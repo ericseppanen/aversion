@@ -52,7 +52,7 @@ enum MyGroup1 {
 
 assign_message_ids! {
     Foo: 123,
-    Bar: 999
+    Bar: 999,
 }
 
 #[test]

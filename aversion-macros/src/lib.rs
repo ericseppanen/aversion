@@ -401,7 +401,7 @@ impl Parse for MessageIdList {
     fn parse(input: ParseStream) -> syn::parse::Result<Self> {
         type IdList = Punctuated<MessageIdValue, Token![,]>;
 
-        let id_list = IdList::parse_separated_nonempty(input)?;
+        let id_list = IdList::parse_terminated(input)?;
 
         Ok(MessageIdList {
             list: id_list.into_iter().collect(),
