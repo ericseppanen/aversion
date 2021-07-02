@@ -106,6 +106,7 @@
 
 pub mod group;
 mod id;
+pub mod util;
 mod versioned;
 
 #[doc(inline)]
