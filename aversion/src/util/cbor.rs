@@ -1,14 +1,14 @@
-//! Provides a `DataSource` module using the CBOR format.
+//! Provides a `DataSink` and `DataSource` using the CBOR format.
 
-use crate::group::DataSource;
+use crate::group::{DataSink, DataSource};
 use crate::util::FixedHeader;
 use serde::de::DeserializeOwned;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use thiserror::Error;
 
-/// Errors that may occur while reading or writing CborSource data.
+/// Errors that may occur while reading or writing CborData data.
 #[derive(Debug, Error)]
-pub enum CborSourceError {
+pub enum CborDataError {
     /// A `std::io::Error` occurred while reading or writing data.
     #[error("IO Error")]
     Io(Option<io::Error>),
@@ -20,67 +20,87 @@ pub enum CborSourceError {
     Eof,
 }
 
-impl From<serde_cbor::Error> for CborSourceError {
+impl From<serde_cbor::Error> for CborDataError {
     fn from(e: serde_cbor::Error) -> Self {
         use serde_cbor::error::Category;
 
         match e.classify() {
-            Category::Io => CborSourceError::Io(None),
-            Category::Syntax => CborSourceError::Serializer,
-            Category::Data => CborSourceError::Serializer,
-            Category::Eof => CborSourceError::Eof,
+            Category::Io => CborDataError::Io(None),
+            Category::Syntax => CborDataError::Serializer,
+            Category::Data => CborDataError::Serializer,
+            Category::Eof => CborDataError::Eof,
         }
     }
 }
 
-impl From<io::Error> for CborSourceError {
+impl From<io::Error> for CborDataError {
     fn from(e: io::Error) -> Self {
-        CborSourceError::Io(Some(e))
+        CborDataError::Io(Some(e))
     }
 }
 
-/// A [`DataSource`] using the CBOR serialization format.
+/// A [`DataSource`] and/or [`DataSink`] using the CBOR serialization format.
 ///
-/// [`CborSource`] works with any type that implements [`Read`].
+/// [`CborData`] works with any type that implements [`Read`] or [`Write`].
 /// That includes files, network sockets, and memory buffers.
 ///
-/// [`Read`]: std::io::Read
+/// It implements the [`DataSource`] trait if the inner type implements [`Read`],
+/// and implements the [`DataSink`] trait if the inner type implements [`Write`].
 ///
-pub struct CborSource<R> {
-    reader: R,
+/// [`Read`]: std::io::Read
+/// [`Write`]: std::io::Write
+///
+pub struct CborData<RW> {
+    inner: RW,
 }
 
-impl<R> CborSource<R>
+impl<RW> CborData<RW> {
+    /// Create a new `CborData`.
+    pub fn new(reader: RW) -> Self {
+        CborData { inner: reader }
+    }
+
+    /// Consume the `CborData`, returning the inner data type.
+    pub fn into_inner(self) -> RW {
+        self.inner
+    }
+}
+
+impl<R> DataSource for CborData<R>
 where
     R: Read,
 {
-    /// Create a new `CborSource`.
-    pub fn new(reader: R) -> Self {
-        CborSource { reader }
-    }
-
-    /// Consume the `CborSource`, returning the original `Read` object.
-    pub fn into_inner(self) -> R {
-        self.reader
-    }
-}
-
-impl<R> DataSource for CborSource<R>
-where
-    R: Read,
-{
-    type Error = CborSourceError;
+    type Error = CborDataError;
     type Header = FixedHeader;
 
-    fn read_header(&mut self) -> Result<Self::Header, Self::Error> {
-        Ok(FixedHeader::deserialize_from(&mut self.reader)?)
+    fn read_header(&mut self) -> Result<FixedHeader, CborDataError> {
+        Ok(FixedHeader::deserialize_from(&mut self.inner)?)
     }
 
-    fn read_message<T>(&mut self) -> Result<T, Self::Error>
+    fn read_message<T>(&mut self) -> Result<T, CborDataError>
     where
         T: DeserializeOwned,
     {
-        let msg: T = serde_cbor::from_reader(&mut self.reader)?;
+        let msg: T = serde_cbor::from_reader(&mut self.inner)?;
         Ok(msg)
+    }
+}
+
+impl<W> DataSink for CborData<W>
+where
+    W: Write,
+{
+    type Error = CborDataError;
+    type Header = FixedHeader;
+
+    fn write_header(&mut self, header: &FixedHeader) -> Result<(), CborDataError> {
+        Ok(header.serialize_into(&mut self.inner)?)
+    }
+
+    fn write_bare_message<T>(&mut self, msg: &T) -> Result<(), CborDataError>
+    where
+        T: serde::Serialize,
+    {
+        Ok(serde_cbor::to_writer(&mut self.inner, msg)?)
     }
 }

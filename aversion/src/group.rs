@@ -6,6 +6,7 @@
 
 use crate::{MessageId, Versioned};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::any::type_name;
 
 /// A data structure that contains a message-id and version fields.
@@ -13,6 +14,10 @@ use std::any::type_name;
 pub trait GroupHeader {
     fn msg_id(&self) -> u16;
     fn msg_ver(&self) -> u16;
+    fn for_msg<T>(msg: &T) -> Self
+    where
+        T: Versioned,
+        T::Base: MessageId;
 }
 
 /// A trait for deserializing any version of a [`Versioned`] data structure.
@@ -131,5 +136,52 @@ pub trait GroupDeserialize: Sized {
             // Call the user-supplied error fn
             Err(src.unexpected_message::<T>(header.msg_id()))
         }
+    }
+}
+
+/// `DataSink` allows user-defined IO, deserialization, and
+/// error handling.
+///
+pub trait DataSink {
+    /// A user-defined error type.
+    ///
+    /// This error type will be returned from all trait member functions.
+    /// It's probably a good idea for it to be able to represent IO errors,
+    /// deserialization errors, and "unknown message" errors.
+    type Error;
+    /// A user-defined header struct.
+    ///
+    /// The `Header` is a way of communicating what kind of message is being
+    /// sent, along with the message version.
+    type Header: GroupHeader;
+
+    /// Write a message header to the data sink.
+    ///
+    /// This is a user-defined function that will write a message header.
+    /// The data in the header will be used by a reader to identify the
+    /// message that follows.
+    ///
+    fn write_header(&mut self, header: &Self::Header) -> Result<(), Self::Error>;
+
+    /// Write a message to the data sink, without a header.
+    ///
+    /// This is a user-defined function that will serialize a message
+    /// of type `T`.
+    ///
+    fn write_bare_message<T>(&mut self, msg: &T) -> Result<(), Self::Error>
+    where
+        T: Serialize;
+
+    /// Write a header and message to the data sink.
+    ///
+    fn write_message<T>(&mut self, msg: &T) -> Result<(), Self::Error>
+    where
+        T: Serialize + Versioned,
+        T::Base: MessageId,
+    {
+        let header = Self::Header::for_msg(msg);
+        self.write_header(&header)?;
+        self.write_bare_message(msg)?;
+        Ok(())
     }
 }

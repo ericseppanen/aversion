@@ -14,17 +14,6 @@ pub struct FixedHeader {
 }
 
 impl FixedHeader {
-    pub fn for_msg<T>(_msg: &T) -> Self
-    where
-        T: Versioned,
-        T::Base: MessageId,
-    {
-        FixedHeader {
-            msg_id: T::Base::MSG_ID,
-            msg_ver: T::VER,
-        }
-    }
-
     pub fn new(msg_id: u16, msg_ver: u16) -> Self {
         FixedHeader { msg_id, msg_ver }
     }
@@ -69,5 +58,16 @@ impl GroupHeader for FixedHeader {
 
     fn msg_ver(&self) -> u16 {
         self.msg_ver
+    }
+
+    fn for_msg<T>(_msg: &T) -> Self
+    where
+        T: Versioned,
+        T::Base: MessageId,
+    {
+        FixedHeader {
+            msg_id: T::Base::MSG_ID,
+            msg_ver: T::VER,
+        }
     }
 }

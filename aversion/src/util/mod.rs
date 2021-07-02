@@ -7,12 +7,12 @@
 //! [`FixedHeader`] is a basic message header struct that implements
 //! the [`GroupHeader`] trait.
 //!
-//! The [`cbor`] module includes [`CborSource`], a `DataSource` that
-//! uses the CBOR serialization format for messages.
+//! The [`cbor`] module includes [`CborData`], a `DataSource`/`DataSink`
+//! that uses the CBOR serialization format for messages.
 //!
 //! [`DataSource`]: crate::group::DataSource
 //! [`GroupHeader`]: crate::group::GroupHeader
-//! [`CborSource`]: crate::util::cbor::CborSource
+//! [`CborData`]: crate::util::cbor::CborData
 
 mod fixed_header;
 

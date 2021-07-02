@@ -1,6 +1,5 @@
-use aversion::group::{DataSource, GroupHeader, UpgradeLatest};
-use aversion::util::cbor::CborSource;
-use aversion::util::FixedHeader;
+use aversion::group::{DataSink, DataSource, GroupHeader, UpgradeLatest};
+use aversion::util::cbor::CborData;
 use aversion::{
     assign_message_ids, FromVersion, GroupDeserialize, MessageId, UpgradeLatest, Versioned,
 };
@@ -58,21 +57,18 @@ assign_message_ids! {
 
 #[test]
 fn test_group() {
-    let mut cursor = Cursor::new(Vec::<u8>::new());
+    let cursor = Cursor::new(Vec::<u8>::new());
+    let mut out_stream = CborData::new(cursor);
 
     let my_foo = FooV1 { foo: 1234 };
-    let header = FixedHeader::for_msg(&my_foo);
-
-    // FIXME: add a DataSink trait for writing
-    header.serialize_into(&mut cursor).unwrap();
-    serde_cbor::to_writer(&mut cursor, &my_foo).unwrap();
-
+    out_stream.write_message(&my_foo).unwrap();
+    let cursor = out_stream.into_inner();
     {
         let mut cursor = cursor.clone();
         // Reset the cursor so we will read from the beginning.
         cursor.seek(SeekFrom::Start(0)).unwrap();
 
-        let mut my_stream = CborSource::new(cursor);
+        let mut my_stream = CborData::new(cursor);
 
         let message = MyGroup1::read_message(&mut my_stream).unwrap();
         assert_eq!(message, MyGroup1::Foo(Foo { foo3: 1245 }));
@@ -82,7 +78,7 @@ fn test_group() {
         // Reset the cursor so we will read from the beginning.
         cursor.seek(SeekFrom::Start(0)).unwrap();
 
-        let mut my_stream = CborSource::new(cursor);
+        let mut my_stream = CborData::new(cursor);
 
         let message: Foo = MyGroup1::expect_message(&mut my_stream).unwrap();
         assert_eq!(message, Foo { foo3: 1245 });
