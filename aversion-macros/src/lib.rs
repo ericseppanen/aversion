@@ -276,6 +276,8 @@ pub fn derive_group_deserialize(input: TokenStream) -> TokenStream {
                 where
                     Src: _aversion::group::DataSource,
                 {
+                    use _aversion::{MessageId, group::{GroupHeader, UpgradeLatest}};
+
                     let header = src.read_header()?;
                     match header.msg_id() {
                         #(#match_arms)*

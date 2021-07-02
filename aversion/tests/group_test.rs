@@ -1,8 +1,6 @@
-use aversion::group::{DataSink, GroupHeader, UpgradeLatest};
+use aversion::group::DataSink;
 use aversion::util::cbor::CborData;
-use aversion::{
-    assign_message_ids, FromVersion, GroupDeserialize, MessageId, UpgradeLatest, Versioned,
-};
+use aversion::{assign_message_ids, FromVersion, GroupDeserialize, UpgradeLatest, Versioned};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Seek, SeekFrom};
 
