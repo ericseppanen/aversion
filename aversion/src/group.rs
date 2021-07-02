@@ -14,10 +14,6 @@ use std::any::type_name;
 pub trait GroupHeader {
     fn msg_id(&self) -> u16;
     fn msg_ver(&self) -> u16;
-    fn for_msg<T>(msg: &T) -> Self
-    where
-        T: Versioned,
-        T::Base: MessageId;
 }
 
 /// A trait for deserializing any version of a [`Versioned`] data structure.
@@ -30,7 +26,7 @@ pub trait GroupHeader {
 // b) User needs to specify a range or list of versions
 pub trait UpgradeLatest: DeserializeOwned + Versioned {
     /// Deserialize version `ver` of the target struct, then upgrade it to the latest version.
-    fn upgrade_latest<Src>(src: &mut Src, ver: u16) -> Result<Self, Src::Error>
+    fn upgrade_latest<Src>(src: &mut Src, header: Src::Header) -> Result<Self, Src::Error>
     where
         Src: DataSource;
 }
@@ -64,7 +60,7 @@ pub trait DataSource {
     ///
     /// This is a user-defined function that will deserialize a message
     /// of type `T`.
-    fn read_message<T>(&mut self) -> Result<T, Self::Error>
+    fn read_message<T>(&mut self, header: &Self::Header) -> Result<T, Self::Error>
     where
         T: DeserializeOwned;
 
@@ -131,7 +127,7 @@ pub trait GroupDeserialize: Sized {
     {
         let header: Src::Header = src.read_header()?;
         if header.msg_id() == T::MSG_ID {
-            T::upgrade_latest(src, header.msg_ver())
+            T::upgrade_latest(src, header)
         } else {
             // Call the user-supplied error fn
             Err(src.unexpected_message::<T>(header.msg_id()))
@@ -149,39 +145,11 @@ pub trait DataSink {
     /// It's probably a good idea for it to be able to represent IO errors,
     /// deserialization errors, and "unknown message" errors.
     type Error;
-    /// A user-defined header struct.
-    ///
-    /// The `Header` is a way of communicating what kind of message is being
-    /// sent, along with the message version.
-    type Header: GroupHeader;
-
-    /// Write a message header to the data sink.
-    ///
-    /// This is a user-defined function that will write a message header.
-    /// The data in the header will be used by a reader to identify the
-    /// message that follows.
-    ///
-    fn write_header(&mut self, header: &Self::Header) -> Result<(), Self::Error>;
-
-    /// Write a message to the data sink, without a header.
-    ///
-    /// This is a user-defined function that will serialize a message
-    /// of type `T`.
-    ///
-    fn write_bare_message<T>(&mut self, msg: &T) -> Result<(), Self::Error>
-    where
-        T: Serialize;
 
     /// Write a header and message to the data sink.
     ///
     fn write_message<T>(&mut self, msg: &T) -> Result<(), Self::Error>
     where
         T: Serialize + Versioned,
-        T::Base: MessageId,
-    {
-        let header = Self::Header::for_msg(msg);
-        self.write_header(&header)?;
-        self.write_bare_message(msg)?;
-        Ok(())
-    }
+        T::Base: MessageId;
 }

@@ -14,10 +14,10 @@
 //! [`GroupHeader`]: crate::group::GroupHeader
 //! [`CborData`]: crate::util::cbor::CborData
 
-mod fixed_header;
+mod header;
 
 #[doc(inline)]
-pub use fixed_header::FixedHeader;
+pub use header::{BasicHeader, TinyHeader};
 
 #[cfg(feature = "serde_cbor")]
 pub mod cbor;

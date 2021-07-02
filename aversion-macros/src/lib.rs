@@ -146,10 +146,13 @@ pub fn derive_upgrade_latest(input: TokenStream) -> TokenStream {
             impl #impl_generics _aversion::group::UpgradeLatest
             for #struct_name #ty_generics #where_clause {
 
-                fn upgrade_latest<Src>(src: &mut Src, ver: u16) -> ::std::result::Result<Self, Src::Error>
+                fn upgrade_latest<Src>(src: &mut Src, header: Src::Header) -> ::std::result::Result<Self, Src::Error>
                 where
                     Src: _aversion::group::DataSource,
                 {
+                    use _aversion::group::GroupHeader;
+
+                    let ver = header.msg_ver();
                     match ver {
                         #(#read_message_arms)*
 
@@ -172,7 +175,7 @@ fn quote_read_message_arm(
 ) -> proc_macro2::TokenStream {
     quote! {
         #version => {
-            let msg = src.read_message::<#versioned_name>()?;
+            let msg = src.read_message::<#versioned_name>(&header)?;
             let upgraded = <#target_name as _aversion::FromVersion::<#versioned_name>>::from_version(msg);
             Ok(upgraded)
         }
@@ -331,7 +334,7 @@ impl GroupVariant {
 
         quote! {
             #struct_name::MSG_ID => {
-                let msg = #struct_name::upgrade_latest(src, header.msg_ver())?;
+                let msg = #struct_name::upgrade_latest(src, header)?;
                 Ok(#enum_name::#enum_variant(msg))
             }
         }

@@ -1,9 +1,12 @@
 //! Provides a `DataSink` and `DataSource` using the CBOR format.
 
 use crate::group::{DataSink, DataSource};
-use crate::util::FixedHeader;
+use crate::util::BasicHeader;
+use crate::{MessageId, Versioned};
 use serde::de::DeserializeOwned;
-use std::io::{self, Read, Write};
+use serde::Serialize;
+use std::convert::TryInto;
+use std::io::{self, Cursor, Read, Write};
 use thiserror::Error;
 
 /// Errors that may occur while reading or writing CborData data.
@@ -71,17 +74,21 @@ where
     R: Read,
 {
     type Error = CborDataError;
-    type Header = FixedHeader;
+    type Header = BasicHeader;
 
-    fn read_header(&mut self) -> Result<FixedHeader, CborDataError> {
-        Ok(FixedHeader::deserialize_from(&mut self.inner)?)
+    fn read_header(&mut self) -> Result<BasicHeader, CborDataError> {
+        Ok(BasicHeader::deserialize_from(&mut self.inner)?)
     }
 
-    fn read_message<T>(&mut self) -> Result<T, CborDataError>
+    fn read_message<T>(&mut self, header: &BasicHeader) -> Result<T, CborDataError>
     where
         T: DeserializeOwned,
     {
-        let msg: T = serde_cbor::from_reader(&mut self.inner)?;
+        // Construct a reader over the exact message length specified
+        // in the message header.
+        let reader = &mut self.inner;
+        let mut subreader = reader.take(header.msg_len.into());
+        let msg: T = serde_cbor::from_reader(&mut subreader)?;
         Ok(msg)
     }
 }
@@ -91,16 +98,22 @@ where
     W: Write,
 {
     type Error = CborDataError;
-    type Header = FixedHeader;
 
-    fn write_header(&mut self, header: &FixedHeader) -> Result<(), CborDataError> {
-        Ok(header.serialize_into(&mut self.inner)?)
-    }
-
-    fn write_bare_message<T>(&mut self, msg: &T) -> Result<(), CborDataError>
+    fn write_message<T>(&mut self, msg: &T) -> Result<(), CborDataError>
     where
-        T: serde::Serialize,
+        T: Serialize + Versioned,
+        T::Base: MessageId,
     {
-        Ok(serde_cbor::to_writer(&mut self.inner, msg)?)
+        // Serialize the message first, then the header (which needs
+        // the serialized message length.
+        let msg_buf = Vec::<u8>::new();
+        let mut cursor = Cursor::new(msg_buf);
+        serde_cbor::to_writer(&mut cursor, msg)?;
+        let msg_buf = cursor.into_inner();
+        let msg_len: u32 = msg_buf.len().try_into().expect("usize to u32");
+        let header = BasicHeader::for_msg(msg, msg_len);
+        header.serialize_into(&mut self.inner)?;
+        self.inner.write_all(&msg_buf)?;
+        Ok(())
     }
 }
