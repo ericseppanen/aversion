@@ -14,7 +14,7 @@ edition = "2018"
 default = ["serde_cbor"]
 
 [dependencies]
-aversion-macros = { path="../aversion-macros", version="0.1" }
+aversion-macros = { path="../aversion-macros", version= "^0.2"}
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 byteorder = "1.4"
