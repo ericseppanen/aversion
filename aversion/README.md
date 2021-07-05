@@ -27,7 +27,7 @@ that code around, or risk breaking compatibilty.
 This crate adds traits that allow us to track the version of each struct and
 derive traits and methods to allow upgrading any struct dynamically to the
 latest version. This means that most code only ever needs to interact with the
-latest version.
+latest version, while still retaining the ability to read older files.
 
 To make this work, structs must follow a particular pattern:
 - Versioned structs must follow the naming
@@ -50,21 +50,22 @@ This crate is still new, and these rules may evolve in the future.
 
 #### Deserialization
 
-The whole point of this exercise is to be able to deserialize data structures
-without knowing or caring what version they are. To help with this,
+We want to be able to deserialize data structures without knowing ahead of
+time what version is stored.
+
+To do this, we use the `DataSource` trait, to specify our serialization
+format, header format, and error types.
 
 Once the `UpgradeLatest` trait is implemented (there is a derive macro for
 this), we can quickly deserialize any version of our data structure, e.g.
 ```
-// Define a data source (IO interface, serialization, etc.)
-let src = MyDataSource::new(...);
-// Read a header struct that contains the message id and struct version
-let header = src.read_header()?;
-// Deserialize the message (any version of Foo) and upgrade it.
-let msg = Foo::upgrade_latest(src, header.msg_ver())?;
+// Define a data source
+let src = CborData::new(...);
+// Read a the next header + message, and upgrade to the latest version
+let msg: Foo = data_src.expect_message()?;
 ```
 Note that `msg` in this example is always the latest version of the `Foo`
-struct family, regardless of which version was actually stored. As long as the
+struct, regardless of which version was actually stored. As long as the
 `FromVersion` code is correct, the rest of the program never needs to be aware
 of which version was read from the file.
 
@@ -82,7 +83,7 @@ enum MyProtocol {
 We can derive the trait `GroupDeserialize` that can automatically deserialize
 any of the messages in `MyProtocol`:
 ```rust
-let incoming_message: MyProtocol = read_message(my_data_source)?;
+let incoming_message = MyProtocol::read_message(&mut my_data_source)?;
 match incoming_message {
     Foo(f) => {
         // handle the received Foo message
@@ -92,7 +93,7 @@ match incoming_message {
     }
 }
 ```
-Similar to the previous example, the header field will tell us which message
+Similar to the previous example, the header will tell us which message
 was sent (i.e. `Foo` or `Bar`), along with the version of that struct (`FooV1`
 or `FooV2`) and `read_message` deserializes the correct version of the struct,
 upgrades it to the latest version, and returns it as a `MyProtocol`
