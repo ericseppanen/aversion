@@ -102,6 +102,41 @@ pub trait DataSource {
     }
 }
 
+/// Useful functions for `DataSource`.
+///
+/// There is a blanket implementation of this trait, so that any
+/// [`DataSource`] type can use these functions.
+pub trait DataSourceExt: DataSource {
+    /// Read a specific message type from the `DataSource`.
+    ///
+    /// This will read the message header, and if the message id matches
+    /// the type `T` that was requested, read the message.
+    /// The message will be upgraded to the latest version, and then
+    /// returned.
+    fn expect_message<T>(&mut self) -> Result<T, Self::Error>
+    where
+        T: MessageId + UpgradeLatest;
+}
+
+impl<Src> DataSourceExt for Src
+where
+    Src: DataSource,
+{
+    fn expect_message<T>(&mut self) -> Result<T, Src::Error>
+    where
+        Src: DataSource,
+        T: MessageId + UpgradeLatest,
+    {
+        let header: Src::Header = self.read_header()?;
+        if header.msg_id() == T::MSG_ID {
+            T::upgrade_latest(self, header)
+        } else {
+            // Call the user-supplied error fn
+            Err(self.unexpected_message::<T>(header.msg_id()))
+        }
+    }
+}
+
 /// A derived trait that can deserialize any message from a group.
 pub trait GroupDeserialize: Sized {
     /// Read the next message from the `DataSource`.
@@ -113,26 +148,6 @@ pub trait GroupDeserialize: Sized {
     fn read_message<Src>(src: &mut Src) -> Result<Self, Src::Error>
     where
         Src: DataSource;
-
-    /// Read a specific message type from the `DataSource`.
-    ///
-    /// This will read the message header, and if the message id matches
-    /// the type `T` that was requested, read the message.
-    /// The message will be upgraded to the latest version, and then
-    /// returned.
-    fn expect_message<Src, T>(src: &mut Src) -> Result<T, Src::Error>
-    where
-        Src: DataSource,
-        T: MessageId + UpgradeLatest,
-    {
-        let header: Src::Header = src.read_header()?;
-        if header.msg_id() == T::MSG_ID {
-            T::upgrade_latest(src, header)
-        } else {
-            // Call the user-supplied error fn
-            Err(src.unexpected_message::<T>(header.msg_id()))
-        }
-    }
 }
 
 /// `DataSink` allows user-defined IO, deserialization, and

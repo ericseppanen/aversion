@@ -1,4 +1,4 @@
-use aversion::group::DataSink;
+use aversion::group::{DataSink, DataSourceExt};
 use aversion::util::cbor::CborData;
 use aversion::{assign_message_ids, FromVersion, GroupDeserialize, UpgradeLatest, Versioned};
 use serde::{Deserialize, Serialize};
@@ -78,7 +78,7 @@ fn test_group() {
 
         let mut my_stream = CborData::new(cursor);
 
-        let message: Foo = MyGroup1::expect_message(&mut my_stream).unwrap();
+        let message: Foo = my_stream.expect_message().unwrap();
         assert_eq!(message, Foo { foo3: 1245 });
     }
 }
