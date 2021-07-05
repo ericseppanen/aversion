@@ -12,7 +12,9 @@ use std::any::type_name;
 /// A data structure that contains a message-id and version fields.
 
 pub trait GroupHeader {
+    /// Retrieve the message id.
     fn msg_id(&self) -> u16;
+    /// Retrieve the message version.
     fn msg_ver(&self) -> u16;
 }
 

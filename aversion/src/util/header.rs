@@ -9,15 +9,23 @@ use std::io::{self, Read, Write};
 /// (big-endian) array of 4 bytes.
 #[derive(Debug, Clone, Copy)]
 pub struct TinyHeader {
+    /// The message id.
     pub msg_id: u16,
+    /// The message version.
     pub msg_ver: u16,
 }
 
 impl TinyHeader {
+    /// Create a new `TinyHeader`
     pub fn new(msg_id: u16, msg_ver: u16) -> Self {
         TinyHeader { msg_id, msg_ver }
     }
 
+    /// Create a new `TinyHeader` that corresponds to a type.
+    ///
+    /// The version and message id values will be filled in from
+    /// the type's [`Versioned`] and [`MessageId`] associated
+    /// constants.
     pub fn for_msg<T>(_msg: &T) -> Self
     where
         T: Versioned,
@@ -81,12 +89,16 @@ impl GroupHeader for TinyHeader {
 /// value, which may make deserialization easier or more efficient.
 #[derive(Debug, Clone, Copy)]
 pub struct BasicHeader {
+    /// The message id.
     pub msg_id: u16,
+    /// The message version.
     pub msg_ver: u16,
+    /// The length of the message when serialized.
     pub msg_len: u32,
 }
 
 impl BasicHeader {
+    /// Create a new `BasicHeader`.
     pub fn new(msg_id: u16, msg_ver: u16, msg_len: u32) -> Self {
         BasicHeader {
             msg_id,
@@ -95,6 +107,11 @@ impl BasicHeader {
         }
     }
 
+    /// Create a new `BasicHeader` that corresponds to a type.
+    ///
+    /// The version and message id values will be filled in from
+    /// the type's [`Versioned`] and [`MessageId`] associated
+    /// constants.
     pub fn for_msg<T>(_msg: &T, msg_len: u32) -> Self
     where
         T: Versioned,

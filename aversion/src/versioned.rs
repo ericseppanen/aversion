@@ -6,7 +6,22 @@
 /// [`IntoVersion`] traits.
 ///
 pub trait Versioned {
+    /// The data structure version.
+    ///
+    /// The version field should start at 1, and be incremented each time
+    /// a change is made to the data structure. [`FromVersion`] should be
+    /// implemented for each new version, to allow automatic upgrading
+    /// from the previous version.
+    ///
+    /// The [`UpgradeLatest`] trait can be derived, to automatically
+    /// upgrade from any old version to the latest version.
     const VER: u16;
+    /// The data structure base type.
+    ///
+    /// The `Base` type is the latest version of the data structure.
+    /// The `Base` type is the one that will implement [`UpgradeLatest`]
+    /// and [`MessageId`]. Those two traits should not be needed on older
+    /// versions.
     type Base: Versioned;
 }
 
@@ -20,6 +35,7 @@ pub trait FromVersion<T>: Versioned
 where
     T: Versioned,
 {
+    /// Convert from an older `Versioned` type to a newer `Versioned` type.
     fn from_version(t: T) -> Self;
 }
 
@@ -39,6 +55,7 @@ where
 ///
 /// This is the inverse of [`FromVersion`]; see its documentation for more.
 pub trait IntoVersion<T> {
+    /// Convert from an older `Versioned` type to a newer `Versioned` type.
     fn into_version(self) -> T;
 }
 

@@ -104,6 +104,10 @@
 //! upgrades it to the latest version, and returns it as a `MyProtocol`
 //! enum, for the caller to handle.
 
+#![warn(missing_docs)]
+#![forbid(unsafe_code)]
+#![warn(clippy::cast_possible_truncation)]
+
 pub mod group;
 mod id;
 pub mod util;
