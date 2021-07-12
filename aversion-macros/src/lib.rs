@@ -16,13 +16,25 @@ struct NameInfo {
     struct_version: u16,
 }
 
+/// `str::rsplit_once` function is introduced in Rust v1.52. This provides
+/// the same functionality until v1.52 is available widely enough that we
+/// can require it.
+fn rsplit_once<'a>(s: &'a str, delimiter: char) -> Option<(&'a str, &'a str)> {
+    let split_pos = s.rfind(delimiter)?;
+
+    let a = &s[..split_pos];
+    let b = &s[(split_pos + 1)..];
+
+    Some((a, b))
+}
+
 impl NameInfo {
     fn from_name(ident: &Ident) -> Self {
         let struct_name = ident.clone();
         let struct_name_string = struct_name.to_string();
 
         // Split the struct into base and version fields
-        let (struct_base, struct_version) = match struct_name_string.rsplit_once('V') {
+        let (struct_base, struct_version) = match rsplit_once(&struct_name_string, 'V') {
             Some((base, version)) => {
                 if base.is_empty() {
                     panic!("failed to parse struct name");
